@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Activate Camera</title>
+    <style>
+        body {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            height: 100vh;
+            margin: 0;
+            font-family: Arial, sans-serif;
+            background-color: #f0f0f0;
+        }
+
+        button {
+            padding: 15px 30px;
+            font-size: 18px;
+            cursor: pointer;
+            border: none;
+            border-radius: 5px;
+            background-color: #007bff;
+            color: white;
+            transition: background-color 0.3s;
+        }
+
+        button:hover {
+            background-color: #0056b3;
+        }
+
+        video {
+            margin-top: 20px;
+            width: 80%;
+            max-width: 600px;
+            border: 1px solid #ccc;
+            border-radius: 5px;
+        }
+    </style>
+</head>
+<body>
+    <button id="activateCamera">Activate Camera</button>
+    <video id="cameraFeed" autoplay></video>
+    <div id="prediction" style="font-size: 2em; color: #007bff; margin-top: 20px;"></div>
+
+    <script>
+        const button = document.getElementById('activateCamera');
+        const video = document.getElementById('cameraFeed');
+        const predictionDiv = document.getElementById('prediction');
+    
+        button.addEventListener('click', async () => {
+            try {
+                const stream = await navigator.mediaDevices.getUserMedia({ video: true });
+                video.srcObject = stream;
+    
+                const canvas = document.createElement('canvas');
+                const context = canvas.getContext('2d');
+    
+                setInterval(async () => {
+                    canvas.width = video.videoWidth;
+                    canvas.height = video.videoHeight;
+                    context.drawImage(video, 0, 0, canvas.width, canvas.height);
+                    const imageData = canvas.toDataURL('image/jpeg'); // Capture frame as JPEG
+    
+                    const response = await fetch('http://127.0.0.1:5000/upload', {
+                        method: 'POST',
+                        headers: { 
+                            'Content-Type': 'application/json' 
+                        },
+                        body: JSON.stringify({ image: imageData }), // Send base64-encoded image
+                    });
+    
+                    const data = await response.json();
+                    if (data.prediction) {
+                        predictionDiv.textContent = data.prediction;
+                    } else if (data.error) {
+                        predictionDiv.textContent = `Error: ${data.error}`;
+                    }
+                }, 500); // Send a frame every 500ms
+            } catch (error) {
+                alert('Unable to access the camera: ' + error.message);
+            }
+        });
+    </script>
+</body>
+</html>
